@@ -1,0 +1,16 @@
+# Snowflake SQL Query Web Application Dependencies
+
+# 웹 프레임워크
+Flask>=2.3.0
+
+# HTTP 요청
+requests>=2.31.0
+
+# JWT 토큰 생성
+PyJWT>=2.8.0
+
+# RSA 키 처리 및 암호화
+cryptography>=41.0.0
+
+# CORS 지원 (필요시)
+flask-cors>=4.0.0

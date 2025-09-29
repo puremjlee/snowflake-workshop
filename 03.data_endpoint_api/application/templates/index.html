@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>❄️ Snowflake SQL Query Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-snowflake"></i>
+                <h1>Snowflake SQL Query Tool</h1>
+            </div>
+            <div class="status" id="status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">연결 확인 중...</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Query Input Section -->
+            <section class="query-section">
+                <div class="query-header">
+                    <h2><i class="fas fa-code"></i> SQL 쿼리</h2>
+                    <div class="query-controls">
+                        <select id="warehouse" class="warehouse-select">
+                            <option value="COMPUTE_WH">COMPUTE_WH</option>
+                            <option value="LARGE_WH">LARGE_WH</option>
+                            <option value="XLARGE_WH">XLARGE_WH</option>
+                        </select>
+                        <button id="executeBtn" class="execute-btn">
+                            <i class="fas fa-play"></i>
+                            실행
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="query-input-wrapper">
+                    <textarea id="sqlQuery" class="sql-input" placeholder="SELECT 쿼리를 입력하세요...
+
+예시:
+SELECT CURRENT_TIMESTAMP() AS current_time, CURRENT_USER() AS current_user;
+
+SELECT * FROM INFORMATION_SCHEMA.TABLES LIMIT 5;
+
+SELECT COUNT(*) AS 테이블수 FROM INFORMATION_SCHEMA.TABLES;">SELECT CURRENT_TIMESTAMP() AS current_time, CURRENT_USER() AS current_user;</textarea>
+                    
+                    <div class="query-actions">
+                        <button id="clearBtn" class="clear-btn">
+                            <i class="fas fa-trash"></i>
+                            지우기
+                        </button>
+                        <button id="formatBtn" class="format-btn">
+                            <i class="fas fa-magic"></i>
+                            포맷팅
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Loading Section -->
+            <section class="loading-section" id="loadingSection" style="display: none;">
+                <div class="loading-spinner">
+                    <i class="fas fa-snowflake fa-spin"></i>
+                </div>
+                <p>Snowflake에서 쿼리를 실행하고 있습니다...</p>
+            </section>
+
+            <!-- Error Section -->
+            <section class="error-section" id="errorSection" style="display: none;">
+                <div class="error-content">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>에러 발생</h3>
+                    <p id="errorMessage"></p>
+                    <button id="retryBtn" class="retry-btn">
+                        <i class="fas fa-redo"></i>
+                        다시 시도
+                    </button>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h2><i class="fas fa-table"></i> 쿼리 결과</h2>
+                    <div class="results-info">
+                        <span id="rowCount" class="info-badge"></span>
+                        <span id="executionTime" class="info-badge"></span>
+                    </div>
+                </div>
+                
+                <div class="table-wrapper">
+                    <table id="resultsTable" class="results-table">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+                
+                <div class="results-actions">
+                    <button id="exportBtn" class="export-btn">
+                        <i class="fas fa-download"></i>
+                        CSV로 내보내기
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>
+                <i class="fas fa-heart"></i>
+                Made with love for Snowflake users
+                <span class="version">v1.0</span>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    
+    <script>
+        // DOM Elements
+        const sqlQuery = document.getElementById('sqlQuery');
+        const warehouse = document.getElementById('warehouse');
+        const executeBtn = document.getElementById('executeBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const formatBtn = document.getElementById('formatBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        
+        const loadingSection = document.getElementById('loadingSection');
+        const errorSection = document.getElementById('errorSection');
+        const resultsSection = document.getElementById('resultsSection');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        const resultsTable = document.getElementById('resultsTable');
+        const tableHead = document.getElementById('tableHead');
+        const tableBody = document.getElementById('tableBody');
+        const rowCount = document.getElementById('rowCount');
+        const executionTime = document.getElementById('executionTime');
+        
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        let currentResults = null;
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            checkHealth();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            executeBtn.addEventListener('click', executeQuery);
+            clearBtn.addEventListener('click', clearQuery);
+            formatBtn.addEventListener('click', formatQuery);
+            retryBtn.addEventListener('click', executeQuery);
+            exportBtn.addEventListener('click', exportToCSV);
+            
+            // Enter 키로 실행 (Ctrl+Enter)
+            sqlQuery.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    executeQuery();
+                }
+            });
+        }
+
+        // 헬스 체크
+        async function checkHealth() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    updateStatus('connected', 'Snowflake 연결됨');
+                } else {
+                    updateStatus('error', '연결 실패');
+                }
+            } catch (error) {
+                updateStatus('error', '서버 연결 실패');
+            }
+        }
+
+        function updateStatus(status, text) {
+            statusDot.className = `status-dot ${status}`;
+            statusText.textContent = text;
+        }
+
+        // 쿼리 실행
+        async function executeQuery() {
+            const sql = sqlQuery.value.trim();
+            const warehouseValue = warehouse.value;
+            
+            if (!sql) {
+                showError('SQL 쿼리를 입력해주세요.');
+                return;
+            }
+
+            showLoading();
+            
+            try {
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sql: sql,
+                        warehouse: warehouseValue
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    showResults(data);
+                }
+                
+            } catch (error) {
+                showError(`네트워크 에러: ${error.message}`);
+            }
+        }
+
+        function showLoading() {
+            hideAllSections();
+            loadingSection.style.display = 'block';
+            executeBtn.disabled = true;
+            executeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 실행 중...';
+        }
+
+        function showError(message) {
+            hideAllSections();
+            errorSection.style.display = 'block';
+            errorMessage.textContent = message;
+            resetExecuteBtn();
+        }
+
+        function showResults(data) {
+            hideAllSections();
+            resultsSection.style.display = 'block';
+            
+            currentResults = data;
+            
+            // 결과 정보 표시
+            rowCount.textContent = `${data.row_count} 행`;
+            executionTime.textContent = `실행 완료`;
+            
+            // 테이블 생성
+            createTable(data.columns, data.rows);
+            
+            resetExecuteBtn();
+        }
+
+        function hideAllSections() {
+            loadingSection.style.display = 'none';
+            errorSection.style.display = 'none';
+            resultsSection.style.display = 'none';
+        }
+
+        function resetExecuteBtn() {
+            executeBtn.disabled = false;
+            executeBtn.innerHTML = '<i class="fas fa-play"></i> 실행';
+        }
+
+        function createTable(columns, rows) {
+            // 헤더 생성
+            tableHead.innerHTML = '';
+            const headerRow = document.createElement('tr');
+            columns.forEach(column => {
+                const th = document.createElement('th');
+                th.textContent = column;
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+            
+            // 본문 생성
+            tableBody.innerHTML = '';
+            rows.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell !== null ? cell : 'NULL';
+                    if (cell === null) {
+                        td.classList.add('null-value');
+                    }
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function clearQuery() {
+            sqlQuery.value = '';
+            sqlQuery.focus();
+            hideAllSections();
+        }
+
+        function formatQuery() {
+            const sql = sqlQuery.value.trim();
+            if (!sql) return;
+            
+            // 간단한 SQL 포맷팅
+            const formatted = sql
+                .replace(/\bSELECT\b/gi, 'SELECT')
+                .replace(/\bFROM\b/gi, '\nFROM')
+                .replace(/\bWHERE\b/gi, '\nWHERE')
+                .replace(/\bGROUP BY\b/gi, '\nGROUP BY')
+                .replace(/\bORDER BY\b/gi, '\nORDER BY')
+                .replace(/\bLIMIT\b/gi, '\nLIMIT');
+            
+            sqlQuery.value = formatted;
+        }
+
+        function exportToCSV() {
+            if (!currentResults) return;
+            
+            const { columns, rows } = currentResults;
+            
+            // CSV 생성
+            let csv = columns.join(',') + '\n';
+            rows.forEach(row => {
+                const csvRow = row.map(cell => {
+                    if (cell === null) return '';
+                    if (typeof cell === 'string' && cell.includes(',')) {
+                        return `"${cell.replace(/"/g, '""')}"`;
+                    }
+                    return cell;
+                }).join(',');
+                csv += csvRow + '\n';
+            });
+            
+            // 다운로드
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `snowflake_query_results_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>

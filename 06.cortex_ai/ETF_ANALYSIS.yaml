@@ -1,0 +1,190 @@
+name: ETF_ANALYSIS
+tables:
+  - name: ASSET_INFO
+    synonyms:
+      - ASSET_DATA
+      - ASSET_DETAILS
+      - ASSET_INFO
+      - ASSET_SUMMARY
+      - DAILY_ASSET_DATA
+      - DAILY_ASSET_INFO
+      - ETF_ASSETS
+      - ETF_INFO_TABLE
+    description: This table stores daily asset information for Exchange-Traded Funds (ETFs) in the Korean market, including the base date, ETF item code, item name in Korean, base index name, assets under management (AUM), various settlement and trading quantities, net asset value (NAV), and the name of the management company in Korean.
+    base_table:
+      database: DEMO
+      schema: MAGI_HANDSON
+      table: ASSET_INFO
+    dimensions:
+      - name: AUM
+        description: Assets Under Management (AUM) represents the total market value of assets managed by an investment firm, financial institution, or individual on behalf of clients, reflecting the scale of their investment management operations.
+        expr: AUM
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - '7470430694'
+          - '10443146122'
+          - '31312564923'
+      - name: BASE_IDX_NM
+        description: The name of the base index, representing the underlying benchmark or market indicator for a particular asset, such as the KOSPI 200, KOSPI 200 futures index, or NASDAQ 100.
+        expr: BASE_IDX_NM
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - 코스피 200
+          - 코스피 200 선물지수
+          - 나스닥100
+      - name: ETF_ITEM_CD
+        description: Unique identifier for an Exchange-Traded Fund (ETF) item.
+        expr: ETF_ITEM_CD
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - KR7252710009
+          - KR7253240006
+          - KR7253230007
+      - name: ITEM_NM_KOR
+        description: Korean name of the investment product.
+        expr: ITEM_NM_KOR
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - KIWOOM 200선물레버리지
+          - KIWOOM 200선물인버스
+          - KIWOOM 200선물인버스2X
+      - name: MCP_NM_KOR
+        description: Asset management company name in Korean.
+        expr: MCP_NM_KOR
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - 키움투자자산운용
+          - 한화자산운용
+          - 미래에셋자산운용
+      - name: SSC_VARI
+        description: Variation in Social Security Contributions
+        expr: SSC_VARI
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - '651715600'
+          - '-3406854000'
+          - '93848300000'
+      - name: SSC_VARI_AMT
+        description: Total variable amount of the SSC (Supplemental Security Component) for the asset.
+        expr: SSC_VARI_AMT
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - '651715600'
+          - '1656336000'
+          - '5301846000'
+      - name: SSC_VARI_SIM
+        description: The SSC_VARI_SIM column represents the variation in simulation results, indicating whether the simulation outcome is better (+), worse (-), or the same (0) compared to a baseline or expected value.
+        expr: SSC_VARI_SIM
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - +
+          - '-'
+          - '0'
+    time_dimensions:
+      - name: BASE_DT
+        description: Date of the base period for which the asset information is applicable.
+        expr: BASE_DT
+        data_type: DATE
+        sample_values:
+          - '2018-01-02'
+          - '2018-01-03'
+          - '2018-01-04'
+    facts:
+      - name: NAV
+        description: Net Asset Value (NAV) represents the total value of assets held in a fund or portfolio, typically calculated by subtracting liabilities from the total value of assets, providing a snapshot of the fund's overall worth.
+        expr: NAV
+        data_type: NUMBER(8,0)
+        sample_values:
+          - '3208659'
+          - '760860'
+          - '770147'
+      - name: RDT_QTY
+        description: Quantity of assets in the Ready-to-Deploy (RDT) state.
+        expr: RDT_QTY
+        data_type: NUMBER(9,0)
+        sample_values:
+          - '8350000'
+          - '200000'
+          - '1000000'
+      - name: SSC_QTY
+        description: The quantity of shares of the company's common stock that are considered to be short sold.
+        expr: SSC_QTY
+        data_type: NUMBER(9,0)
+        sample_values:
+          - '1400000'
+          - '50000'
+          - '0'
+  - name: MARKET_INFO
+    synonyms:
+      - DAILY_MARKET_INFO
+      - DAILY_TRADE_DATA
+      - ETF_MARKET_INFO
+      - ETF_SUMMARY
+      - MARKET_DATA
+      - MARKET_INFO
+      - MARKET_SUMMARY
+      - TRADE_INFO
+    description: This table, MARKET_INFO, stores daily market information for ETF (Exchange-Traded Fund) items, including the base date, ETF item code, item name in Korean, base index name, market capitalization, total buy amount, and total sell amount, with a 1-minute lag and incremental refresh mode, sourced from the trade_daily and SF_KOSCOM_ETF_JONG_DAILY tables.
+    base_table:
+      database: DEMO
+      schema: MAGI_HANDSON
+      table: MARKET_INFO
+    dimensions:
+      - name: BASE_IDX_NM
+        description: Market index name, representing the name of the base index used for market analysis, such as Kospi 200 futures index, S&P 500 Index, or Kospi 200.
+        expr: BASE_IDX_NM
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - 코스피 200 선물지수
+          - S&P500 Index
+          - 코스피 200
+      - name: ETF_ITEM_CD
+        description: Unique identifier for a specific Exchange-Traded Fund (ETF) item.
+        expr: ETF_ITEM_CD
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - KR7133690008
+          - KR7433330008
+          - KR7360200000
+      - name: ITEM_NM_KOR
+        description: Market instrument name in Korean.
+        expr: ITEM_NM_KOR
+        data_type: VARCHAR(16777216)
+        sample_values:
+          - ACE 미국S&P500
+          - RISE 200선물인버스2X
+          - KODEX 미국나스닥100선물(H)
+    time_dimensions:
+      - name: BASE_DT
+        description: Date of market data snapshot.
+        expr: BASE_DT
+        data_type: DATE
+        sample_values:
+          - '2025-08-26'
+          - '2022-01-05'
+          - '2022-04-18'
+    facts:
+      - name: MKCAP
+        description: Market capitalization, representing the total value of outstanding shares of a publicly traded company.
+        expr: MKCAP
+        data_type: FLOAT
+        sample_values:
+          - '21392000000'
+          - '28567000000'
+          - '13702000000'
+      - name: SUM_BUY_AMT
+        description: The total amount spent by customers on purchases in the market.
+        expr: SUM_BUY_AMT
+        data_type: NUMBER(38,0)
+        sample_values:
+          - '4402769420'
+          - '14020107350'
+          - '1547291775'
+      - name: SUM_SEL_AMT
+        description: Total sales amount for a specific market or region.
+        expr: SUM_SEL_AMT
+        data_type: NUMBER(38,0)
+        sample_values:
+          - '4782916360'
+          - '64716636395'
+          - '166422415'
